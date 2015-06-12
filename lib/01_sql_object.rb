@@ -35,11 +35,11 @@ class SQLObject
   end
 
   def self.parse_all(results)
-    cats = []
+    all_objs = []
     results.each do |sql_obj|
-      cats << self.new(sql_obj)
+      all_objs << self.new(sql_obj)
     end
-    cats
+    all_objs
   end
 
   def self.find(id)
