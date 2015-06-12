@@ -5,7 +5,10 @@ require 'active_support/inflector'
 
 class SQLObject
   def self.columns
-    cols = DBConnection.execute2("SELECT * FROM #{self.table_name}")
+    cols = DBConnection.execute2(<<-SQL)
+      SELECT * FROM #{self.table_name}
+    SQL
+
     cols.first.map { |c| c.to_sym }
   end
 
@@ -18,7 +21,6 @@ class SQLObject
       define_method("#{col}=") do |attr_val|
         self.attributes[col.to_sym] = attr_val
       end
-
     end
   end
 
@@ -31,7 +33,10 @@ class SQLObject
   end
 
   def self.all
-    parse_all(DBConnection.execute("SELECT #{self.table_name}.* FROM #{self.table_name}"))
+    parse_all(DBConnection.execute(<<-SQL))
+      SELECT #{self.table_name}.*
+      FROM #{self.table_name}
+    SQL
   end
 
   def self.parse_all(results)
@@ -39,19 +44,23 @@ class SQLObject
     results.each do |sql_obj|
       all_objs << self.new(sql_obj)
     end
+
     all_objs
   end
 
   def self.find(id)
-    #all.find { |obj| obj.id == id }
-    found = DBConnection.execute("SELECT #{self.table_name}.* FROM #{self.table_name} WHERE id = #{id}")
+    found = DBConnection.execute(<<-SQL)
+      SELECT #{self.table_name}.*
+      FROM #{self.table_name}
+      WHERE id = #{id}
+    SQL
+
     found.count == 1 ? self.new(found[0]) : nil
   end
 
   def initialize(params = {})
     params.each do |attr_str, attr_val|
       attr_name = attr_str.to_sym
-
       if !self.class.columns.include?(attr_name)
         raise "unknown attribute '#{attr_name}'"
       end
@@ -72,7 +81,6 @@ class SQLObject
     cols = self.class.columns
     col_names = cols.join(",")
     question_marks = (["?"] * cols.count).join(",")
-
     DBConnection.execute(<<-SQL, *attribute_values)
       INSERT INTO
         #{self.class.table_name} (#{col_names})
@@ -81,13 +89,11 @@ class SQLObject
     SQL
 
     self.id = DBConnection.last_insert_row_id
-
+    nil
   end
 
   def update
-
     set_line = self.class.columns.map {|attr| "#{attr} = ? "}.join(",")
-
     DBConnection.execute(<<-SQL, *attribute_values, self.id)
       UPDATE
         #{self.class.table_name}
@@ -96,6 +102,8 @@ class SQLObject
       WHERE
         id = ?
     SQL
+
+    nil
   end
 
   def save
