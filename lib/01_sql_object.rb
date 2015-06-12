@@ -10,7 +10,7 @@ class SQLObject
   end
 
   def self.finalize!
-    columns.each do |col|
+    self.columns.each do |col|
       define_method("#{col}") do
         self.attributes[col.to_sym]
       end
@@ -31,19 +31,33 @@ class SQLObject
   end
 
   def self.all
-
+    parse_all(DBConnection.execute("SELECT #{self.table_name}.* FROM #{self.table_name}"))
   end
 
   def self.parse_all(results)
-    # ...
+    cats = []
+    results.each do |sql_obj|
+      cats << self.new(sql_obj)
+    end
+    cats
   end
 
   def self.find(id)
-    # ...
+    #all.find { |obj| obj.id == id }
+    found = DBConnection.execute("SELECT #{self.table_name}.* FROM #{self.table_name} WHERE id = #{id}")
+    found.count == 1 ? self.new(found[0]) : nil
   end
 
   def initialize(params = {})
-    # ...
+    params.each do |attr_str, attr_val|
+      attr_name = attr_str.to_sym
+
+      if !self.class.columns.include?(attr_name)
+        raise "unknown attribute '#{attr_name}'"
+      end
+
+      self.send("#{attr_name}=", attr_val)
+    end
   end
 
   def attributes
